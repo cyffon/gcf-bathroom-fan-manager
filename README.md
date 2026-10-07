@@ -36,19 +36,26 @@ npm run dev
 | 名前 | 必須 | 値の例・用途 |
 | --- | --- | --- |
 | `GCP_PROJECT_ID` | はい | `my-gcp-project`（プロジェクト ID） |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | はい | `projects/123456789012/locations/global/workloadIdentityPools/github/providers/github`（ここはプロジェクト「番号」） |
 | `GCP_DEPLOY_SERVICE_ACCOUNT` | はい | `github-deployer@my-gcp-project.iam.gserviceaccount.com`（デプロイ用） |
 | `GCP_RUNTIME_SERVICE_ACCOUNT` | はい | `bathroom-fan@my-gcp-project.iam.gserviceaccount.com`（関数の実行用） |
 | `GCP_REGION` | いいえ | 未設定なら `asia-northeast1`（東京） |
 | `GCF_FUNCTION_NAME` | いいえ | 未設定なら `bathroom-fan-manager` |
 
-これらは識別子なので Secrets にする必要はありません。このワークフローは `${{ vars.NAME }}` を参照するため、Variables に登録してください。Secrets に登録する場合は参照も `${{ secrets.NAME }}` に変更します。
+上記は `${{ vars.NAME }}` で参照します。
+
+次の値は **Settings → Secrets and variables → Actions → Secrets → New repository secret** に登録します。
+
+| 名前 | 必須 | 値の例・用途 |
+| --- | --- | --- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | はい | `projects/123456789012/locations/global/workloadIdentityPools/github/providers/github`（ここはプロジェクト「番号」） |
+
+Provider のリソース名自体は秘密鍵ではありませんが、このプロジェクトでは Secrets で管理し、`${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}` で参照します。値は末尾の Provider ID だけでなく、上記形式のリソース名全体を指定してください。Secrets に保存しても、Google Cloud 側で対象リポジトリ・ブランチに認証を制限する設定は必要です。
 
 認証には Workload Identity Federation（OIDC）を使い、サービスアカウントの JSON 秘密鍵は保存しません。
 
 ### Google Cloud 側の初期設定
 
-GitHub の Variables を登録するだけではデプロイできません。課金が有効なプロジェクトで次の設定も必要です。
+GitHub の Secrets / Variables を登録するだけではデプロイできません。課金が有効なプロジェクトで次の設定も必要です。
 
 1. Cloud Functions、Cloud Run、Cloud Build、Artifact Registry、IAM Service Account Credentials、Security Token Service の API を有効にします。
 2. デプロイ用と関数実行用のサービスアカウントを作成します。

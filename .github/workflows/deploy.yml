@@ -24,7 +24,7 @@ jobs:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
       GCF_FUNCTION_NAME: ${{ vars.GCF_FUNCTION_NAME || 'bathroom-fan-manager' }}
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
     steps:
@@ -36,7 +36,7 @@ jobs:
         run: |
           for key in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT GCP_RUNTIME_SERVICE_ACCOUNT; do
             if [[ -z "${!key}" ]]; then
-              echo "::error::Missing repository variable: ${key}"
+              echo "::error::Missing repository configuration: ${key} (see README for Secrets/Variables)"
               exit 1
             fi
           done
