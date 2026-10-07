@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.deploy/
+gha-creds-*.json
+.env
+.env.*
+!.env.example

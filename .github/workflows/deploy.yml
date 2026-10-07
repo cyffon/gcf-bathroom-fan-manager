@@ -1,0 +1,91 @@
+name: Deploy Cloud Function
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloud-function
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+      GCF_FUNCTION_NAME: ${{ vars.GCF_FUNCTION_NAME || 'bathroom-fan-manager' }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        shell: bash
+        run: |
+          for key in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT GCP_RUNTIME_SERVICE_ACCOUNT; do
+            if [[ -z "${!key}" ]]; then
+              echo "::error::Missing repository variable: ${key}"
+              exit 1
+            fi
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # Upload only application files, excluding generated credentials and node_modules.
+      - name: Prepare deployment source
+        run: |
+          mkdir -p .deploy
+          cp package.json package-lock.json tsconfig.json .deploy/
+          cp -R src dist .deploy/
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Deploy
+        id: deploy
+        uses: google-github-actions/deploy-cloud-functions@v4
+        timeout-minutes: 20
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          region: ${{ env.GCP_REGION }}
+          name: ${{ env.GCF_FUNCTION_NAME }}
+          environment: GEN_2
+          runtime: nodejs22
+          entry_point: bathroomFanManager
+          source_dir: .deploy
+          service_account: ${{ env.GCP_RUNTIME_SERVICE_ACCOUNT }}
+
+      - name: Write deployment summary
+        env:
+          FUNCTION_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          printf 'Function URL: %s\n' "$FUNCTION_URL" >> "$GITHUB_STEP_SUMMARY"
