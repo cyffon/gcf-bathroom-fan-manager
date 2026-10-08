@@ -21,7 +21,7 @@ fanRouter.get("/sensor-on", async (_req, res, next) => {
         res.status(500).json({ error: "Failed to cancel previous scheduled task" });
       });
       await saveState(true);
-      res.json("3時間後に換気扇を自動で停止するようにスケジュールしました。");
+      return res.json("3時間後に換気扇を自動で停止するようにスケジュールしました。");
     }
 
     res.json("換気扇はオンになりました。停止するスケジュールはありません。");
